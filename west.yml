@@ -1,0 +1,18 @@
+# Copyright (c) 2023 Linaro
+# SPDX-License-Identifier: Apache-2.0
+
+manifest:
+  remotes:
+    - name: zephyr
+      url-base: https://github.com/uLipe
+  defaults:
+    remote: zephyr
+
+  self:
+    path: virtio-mmio-serial-rtos-to-rtos
+
+  projects:
+    - name: zephyr
+      path: zephyr
+      revision: feature/virtio-serial-device
+      import: true

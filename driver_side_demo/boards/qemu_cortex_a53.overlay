@@ -1,0 +1,63 @@
+/*
+ * Copyright 2023 Linaro.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+#include "pcie_ivshmem.dtsi"
+
+/{
+	reserved-memory {
+		compatible = "reserved-memory";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		status = "okay";
+		ranges;
+
+		vmram_ivshmem0: vmram_ivshmem@800 {
+			status = "okay";
+			reg = < 0x800 0x80000 >;
+			device_type = "memory";
+			label = "vmram_ivshmem0";
+		};
+
+		vmram_ivshmem1: vmram_ivshmem@80800 {
+			status = "okay";
+			reg = < 0x80800 0x80000 >;
+			device_type = "memory";
+			label = "vmram_ivshmem1";
+		};
+
+		/* reserve this area for the vrings */
+		vring_ivshmem: vmram_ivshmem@100800 {
+			status = "okay";
+			reg = < 0x100800 0x80000 >;
+			device_type = "memory";
+			label = "vring_ivshmem";
+		};
+	};
+
+	virtio_mmio@0 {
+		dma-coherent;
+		interrupt-parent = < &gic >;
+		interrupts = < 0x0 0x2f 0x1 0x0 >;
+		reg = < 0x0 0x0 0x0 0x200 >;
+		compatible = "virtio,mmio";
+		status = "okay";
+		label = "virtio0";
+		memory-region = < &vmram_ivshmem0 >;
+		virtio_serial0: serial {
+			label = "virt-serial";
+			compatible = "virtio-serial";
+		};
+	};
+
+	ipm_ivshmem0: ipm_ivshmem {
+		compatible = "linaro,ivshmem-ipm";
+		ivshmem = <&ivshmem0>;
+		status = "okay";
+	};
+
+	chosen {
+		zephyr,ipc = &ipm_ivshmem0;
+	};
+};
