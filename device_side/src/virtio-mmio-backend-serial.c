@@ -14,9 +14,15 @@
 #include <openamp/virtio_serial.h>
 #include "virtio-mmio-backend.h"
 
+#if defined(CONFIG_IVSHMEM)
 const struct device *ivshmem_dev = DEVICE_DT_GET(DT_NODELABEL(ivshmem0));
 const struct device *ipm_dev = DEVICE_DT_GET(DT_NODELABEL(ipm_ivshmem0));
 const struct device *serial_dev = DEVICE_DT_GET(DT_NODELABEL(uart0));
+#else
+const struct device *ivshmem_dev = NULL;
+const struct device *ipm_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_ipc));
+const struct device *serial_dev = DEVICE_DT_GET(DT_NODELABEL(flexcomm0));
+#endif
 
 enum virtio_serial_backend_state {
 	VIRTIO_SERIAL_DEV_READY = 0,
@@ -93,24 +99,35 @@ void virtio_mmio_backend_handler(struct virtio_mmio_backend *dev,
 		serial_backend_dev.vrings[queue_id].used->idx++;
 
 		virtio_mmio_backend_raise_interrupt(dev);
+
+#if defined(CONFIG_IVSHMEM)
 		ipm_send(ipm_dev, 0, ivshmem_get_id(ivshmem_dev) + 1, NULL, 0);
+#else
+		ipm_send(ipm_dev, 0, 0, NULL, 0);
+#endif
 	}
 }
 
 int main(void)
 {
-	uintptr_t ivhsmem_cfg_area;
+	uintptr_t virtio_mmio_cfg_area;
+	int shmem_area_size;
 
-	int ivshmem_area_size = ivshmem_get_mem(ivshmem_dev, &ivhsmem_cfg_area);
+#if defined(CONFIG_IVSHMEM)
+	shmem_area_size = ivshmem_get_mem(ivshmem_dev, &virtio_mmio_cfg_area);
+#else
+	virtio_mmio_cfg_area = (uintptr_t) (DT_REG_ADDR(DT_CHOSEN(zephyr_ipc_shm)));
+	shmem_area_size = DT_REG_SIZE(DT_CHOSEN(zephyr_ipc_shm));
+#endif
 
 	/* device side initializes IVSHMEM before usage*/
-	memset((void *)ivhsmem_cfg_area, 0, ivshmem_area_size);
+	memset((void *)virtio_mmio_cfg_area, 0, shmem_area_size);
 
 	ipm_register_callback(ipm_dev, ipm_platform_callback, NULL);
 	ipm_set_enabled(ipm_dev, 1);
 
 	virtio_mmio_backend_initialize(&serial_backend_dev.virtio_mmio_backend_dev,
-						ivhsmem_cfg_area,
+						virtio_mmio_cfg_area,
 						VIRTIO_ID_CONSOLE,
 						virtio_mmio_backend_handler,
 						NULL);

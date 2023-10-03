@@ -10,4 +10,3 @@ project(hello_world)
 zephyr_compile_definitions(METAL_MAX_DEVICE_REGIONS=2)
 
 target_sources(app PRIVATE src/main.c src/virtio_mmio_ivshmem.c)
-
